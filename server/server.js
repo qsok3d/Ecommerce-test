@@ -3,12 +3,11 @@ import path from 'path'
 import cors from 'cors'
 import bodyParser from 'body-parser'
 import sockjs from 'sockjs'
-import { renderToStaticNodeStream } from 'react-dom/server'
-import React from 'react'
 
 import cookieParser from 'cookie-parser'
 import config from './config'
-import Html from '../client/html'
+
+const { readFile } = require('fs').promises
 
 const Root = () => ''
 
@@ -41,37 +40,18 @@ const middleware = [
 
 middleware.forEach((it) => server.use(it))
 
-server.use('/api/', (req, res) => {
-  res.status(404)
-  res.end()
-})
-
-const [htmlStart, htmlEnd] = Html({
-  body: 'separator',
-  title: 'Skillcrucial - Become an IT HERO'
-}).split('separator')
-
-server.get('/', (req, res) => {
-  const appStream = renderToStaticNodeStream(<Root location={req.url} context={{}} />)
-  res.write(htmlStart)
-  appStream.pipe(res, { end: false })
-  appStream.on('end', () => {
-    res.write(htmlEnd)
-    res.end()
-  })
-})
-
-server.get('/*', (req, res) => {
-  const initialState = {
-    location: req.url
-  }
-
-  return res.send(
-    Html({
-      body: '',
-      initialState
+const reader = async () => {
+  const result = await readFile(`${__dirname}/data.json`, { encoding: 'utf-8' })
+    .then((data) => JSON.parse(data))
+    .catch(async () => {
+      return 'dont have file'
     })
-  )
+  return result
+}
+
+server.get('/api/v1/products', async (req, res) => {
+  const newFile = await reader()
+  res.json(newFile)
 })
 
 const app = server.listen(port)
